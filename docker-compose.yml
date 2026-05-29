@@ -1,0 +1,47 @@
+services:
+  kind-bootstrap-a:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kind-bootstrap:latest
+    container_name: kind-bootstrap-a
+    environment:
+      K8S_NODES: "1"
+      CLUSTER_NAME: "sus-cluster-a"
+      PATIENT_COUNT: "100"
+      PATIENT_IMAGE: "sus-app:latest"
+      HEALTH_POST_COUNT: "10"
+      HEALTH_POST_IMAGE: "sus-app:latest"
+      SUS_DB_COUNT: "1"
+      SUS_DB_IMAGE: "sus-app:latest"
+      NATIONAL_DB_COUNT: "0"
+      BUILD_APP_IMAGE: "1"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace:ro
+    stdin_open: true
+    tty: true
+
+  kind-bootstrap-b:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kind-bootstrap:latest
+    container_name: kind-bootstrap-b
+    environment:
+      K8S_NODES: "1"
+      CLUSTER_NAME: "sus-cluster-b"
+      PATIENT_COUNT: "100"
+      PATIENT_IMAGE: "sus-app:latest"
+      HEALTH_POST_COUNT: "10"
+      HEALTH_POST_IMAGE: "sus-app:latest"
+      SUS_DB_COUNT: "1"
+      SUS_DB_IMAGE: "sus-app:latest"
+      NATIONAL_DB_COUNT: "1"
+      NATIONAL_DB_IMAGE: "sus-app:latest"
+      BUILD_APP_IMAGE: "1"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace:ro
+    stdin_open: true
+    tty: true
