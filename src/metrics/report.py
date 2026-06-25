@@ -7,7 +7,7 @@ concern so it can be unit-tested in isolation.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 def _safe_ratio(numerator: float, denominator: float) -> float:
@@ -29,6 +29,11 @@ class SimulationReport:
     corrected_inconsistencies: int
 
     average_response_time_ms: float
+
+    # Per civil field: how many records arrived with it missing, and how many
+    # of those the national database recovered (always 0 in Scenario A).
+    missing_by_field: dict = field(default_factory=dict)
+    recovered_by_field: dict = field(default_factory=dict)
 
     # -- the five headline metrics ------------------------------------- #
 
@@ -55,6 +60,8 @@ class SimulationReport:
             "integrated_volume": self.integrated_volume,
             "inconsistency_correction_rate": self.inconsistency_correction_rate,
             "average_response_time_ms": self.average_response_time_ms,
+            "missing_by_field": dict(self.missing_by_field),
+            "recovered_by_field": dict(self.recovered_by_field),
         }
 
     def render(self) -> str:
@@ -72,4 +79,21 @@ class SimulationReport:
             f"   ({self.corrected_inconsistencies}/{self.detected_inconsistencies} fixed)",
             f"  Average response time ..... {self.average_response_time_ms:.2f} ms",
         ]
+        lines += self._render_breakdown()
         return "\n".join(lines)
+
+    def _render_breakdown(self) -> list[str]:
+        """Per-field missing/recovered table, shown when there is data for it."""
+        if not self.missing_by_field:
+            return []
+        lines = [
+            "",
+            "  Missing civil data by field (recovered by national base):",
+        ]
+        for name, missing in self.missing_by_field.items():
+            recovered = self.recovered_by_field.get(name, 0)
+            label = f"{name} ".ljust(14, ".")
+            lines.append(
+                f"    {label} {missing:>4} missing, {recovered:>4} recovered"
+            )
+        return lines

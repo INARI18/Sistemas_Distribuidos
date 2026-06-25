@@ -56,4 +56,5 @@ class StandardizedRecord:
     corrected_formats: int = 0         # format issues successfully fixed
     uncorrected_formats: int = 0       # format issues left unresolved
     unresolved_missing: int = 0        # absent civil data not filled in
+    filled_by_national: int = 0        # civil fields completed by the national DB (B)
     analysis_ready: bool = False       # all civil fields present + standard

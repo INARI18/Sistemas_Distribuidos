@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 .venv/
 .env
+
+# generated metric reports (JSON/CSV)
+reports/

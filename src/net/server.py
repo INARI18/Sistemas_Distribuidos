@@ -28,11 +28,15 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from statistics import mean
 
-from ..database import PROCESSING_DELAY_SECONDS, IngestionEngine
-from ..metrics import SimulationReport
+from ..database import PROCESSING_DELAY_SECONDS, IngestionEngine, Reconciler
+from ..metrics import SimulationReport, write_report
 from . import protocol
 
-SCENARIO_NAME = "Scenario A - no national general database (Docker)"
+# Human-readable scenario label, keyed by the SCENARIO toggle.
+SCENARIO_NAMES = {
+    "A": "Scenario A - no national general database (Docker)",
+    "B": "Scenario B - with national general database (Docker)",
+}
 
 
 class DatabaseState:
@@ -43,8 +47,9 @@ class DatabaseState:
     engine and the client-side counters.
     """
 
-    def __init__(self):
-        self._engine = IngestionEngine()
+    def __init__(self, scenario: str = "A", national: Reconciler | None = None):
+        self.scenario = scenario.upper()
+        self._engine = IngestionEngine(national=national)
         self._lock = threading.Lock()
 
         self.sent_records = 0
@@ -81,7 +86,7 @@ class DatabaseState:
     def build_report(self) -> SimulationReport:
         with self._lock:
             return SimulationReport(
-                scenario=SCENARIO_NAME,
+                scenario=SCENARIO_NAMES.get(self.scenario, SCENARIO_NAMES["A"]),
                 sent_records=self.sent_records,
                 received_records=self._engine.received,
                 integrated_volume=self._engine.integrated_volume,
@@ -91,6 +96,8 @@ class DatabaseState:
                 average_response_time_ms=(
                     mean(self.response_times_ms) if self.response_times_ms else 0.0
                 ),
+                missing_by_field=dict(self._engine.missing_by_field),
+                recovered_by_field=dict(self._engine.recovered_by_field),
             )
 
 
@@ -143,20 +150,35 @@ def _make_handler(state: DatabaseState):
     return Handler
 
 
-def serve(host: str, port: int, idle_timeout: float) -> None:
+def serve(
+    host: str,
+    port: int,
+    idle_timeout: float,
+    scenario: str = "A",
+    national: Reconciler | None = None,
+    report_dir: str | None = None,
+) -> None:
     """Serve until traffic goes quiet, then print the report and stop.
 
     Finalizes once at least one record has been ingested and no request has
     arrived for ``idle_timeout`` seconds -- so the post count never has to be
     declared up front and ``--scale`` works with any number of posts.
+
+    In Scenario B a ``national`` reconciler (an HTTP client to the
+    ``national-database`` container) is passed in; the central database consults
+    it for every record before storing it.
+
+    When ``report_dir`` is given, the final report is also written there as JSON
+    (full report) and CSV (the per-field breakdown), in addition to the log.
     """
-    state = DatabaseState()
+    state = DatabaseState(scenario=scenario, national=national)
     httpd = ThreadingHTTPServer((host, port), _make_handler(state))
 
     server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     server_thread.start()
     print(
         f"[sus-database] listening on {host}:{port}; "
+        f"running {SCENARIO_NAMES.get(state.scenario, SCENARIO_NAMES['A'])}; "
         f"will finalize after {idle_timeout:.0f}s of inactivity",
         flush=True,
     )
@@ -164,10 +186,23 @@ def serve(host: str, port: int, idle_timeout: float) -> None:
     while not (state.has_data and state.idle_seconds() >= idle_timeout):
         time.sleep(0.25)
 
-    print("\n" + state.build_report().render() + "\n", flush=True)
+    report = state.build_report()
+    print("\n" + report.render() + "\n", flush=True)
+
+    if report_dir:
+        _persist_report(report, report_dir, state.scenario)
 
     httpd.shutdown()
     print(
         f"[sus-database] {state.completed_posts} post(s) reported; shutting down.",
         flush=True,
     )
+
+
+def _persist_report(report: SimulationReport, report_dir: str, scenario: str) -> None:
+    """Write the report to disk; a failure here must not abort the run."""
+    try:
+        paths = write_report(report, report_dir, f"report-scenario-{scenario.lower()}")
+        print(f"[sus-database] report written to: {', '.join(paths)}", flush=True)
+    except OSError as exc:
+        print(f"[sus-database] could not write report files: {exc}", flush=True)

@@ -10,7 +10,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 COPY src/ ./src/
-COPY db_server.py post_runner.py ./
+COPY db_server.py post_runner.py national_server.py ./
 
 # Default command runs the database; the health-post service overrides it.
 CMD ["python", "db_server.py"]

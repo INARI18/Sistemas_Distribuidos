@@ -1,21 +1,26 @@
-# SUS data-integration simulation, Scenario A, as real containers.
+# SUS data-integration simulation as real containers.
 #
-#   sus-database   one central database (HTTP server)
-#   health-post    the health posts -- scale this to as many as you like
+#   sus-database       one central database (HTTP server)
+#   health-post        the health posts -- scale this to as many as you like
+#   national-database  the authoritative national registry (Scenario B only)
 #
-# The posts can only reach the database over the Docker network; they have no
-# route to one another, mirroring the proposal's isolated containers. Run it
-# with the default 5 posts:
+# The posts can only reach the central database over the Docker network; they
+# have no route to one another, mirroring the proposal's isolated containers.
+# The national database is reached by the central database alone.
+#
+# Scenario A (default) -- isolated posts + central database, no national base:
 #
 #   docker compose up --build
+#   docker compose up --build --scale health-post=8     # any number of posts
 #
-# ...or with any number of posts:
+# Scenario B -- adds the national database that completes the civil data the
+# central database could not resolve on its own (note the profile + SCENARIO):
 #
-#   docker compose up --build --scale health-post=8
+#   SCENARIO=B docker compose --profile scenario-b up --build
 #
-# The database does not need to be told how many posts there are: it prints the
-# final metrics report to its logs once the posts go quiet, then every container
-# exits on its own.
+# The central database does not need to be told how many posts there are: it
+# prints the final metrics report to its logs once the posts go quiet, then
+# every container exits on its own.
 
 services:
   sus-database:
@@ -26,8 +31,26 @@ services:
       PORT: "8000"
       # finalize after this many seconds with no incoming records
       IDLE_TIMEOUT: "${IDLE_TIMEOUT:-5}"
+      # 'A' (isolated) or 'B' (consult the national database)
+      SCENARIO: "${SCENARIO:-A}"
+      NATIONAL_URL: "http://national-database:9000"
+      # where the JSON/CSV report is written (mounted to ./reports on the host)
+      REPORT_DIR: "/app/reports"
     ports:
       - "8000:8000"               # exposes GET /report on the host, optional
+    volumes:
+      - ./reports:/app/reports    # final report (JSON + CSV) shows up here
+    restart: "no"
+
+  national-database:
+    build: .
+    image: sus-sim:latest
+    command: python national_server.py
+    # Only started for Scenario B (`--profile scenario-b`); absent in A.
+    profiles: ["scenario-b"]
+    environment:
+      PORT: "9000"
+      COVERAGE: "${COVERAGE:-0.9}"   # share of identifiable patients on file
     restart: "no"
 
   health-post:
