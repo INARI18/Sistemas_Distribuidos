@@ -11,7 +11,11 @@ from dataclasses import dataclass, field
 from ..domain import ESSENTIAL_CIVIL_FIELDS
 
 _CANONICAL_CPF = re.compile(r"\d{3}\.\d{3}\.\d{3}-\d{2}")
-_CITIES = ("Florianopolis", "Joinville", "Blumenau", "Chapeco", "Criciuma")
+_CITIES = (
+    "Florianopolis", "Joinville", "Blumenau", "Chapeco", "Criciuma", "Alegrete",
+    "Pelotas", "Santa Maria", "Caxias do Sul", "Porto Alegre", "Rio de Janeiro",
+    "Sao Paulo", "Belo Horizonte", "Brasilia", "Salvador", "Fortaleza",
+)
 
 
 @dataclass(frozen=True)
