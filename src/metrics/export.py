@@ -39,7 +39,7 @@ def write_comparison(
         ("access_rate", a["access_rate"], b["access_rate"], deltas["access_rate"]),
         ("utilization_rate", a["utilization_rate"], b["utilization_rate"], deltas["utilization_rate"]),
         ("integrated_volume", a["integrated_volume"], b["integrated_volume"], deltas["integrated_volume"]),
-        ("inconsistency_correction_rate", a["inconsistency_correction_rate"], b["inconsistency_correction_rate"], deltas["inconsistency_correction_rate"]),
+        ("missing_recovery_rate", a["missing_recovery_rate"], b["missing_recovery_rate"], deltas["missing_recovery_rate"]),
         ("average_response_time_ms", a["average_response_time_ms"], b["average_response_time_ms"], deltas["average_response_time_ms"]),
     ]
     with open(csv_path, "w", encoding="utf-8", newline="") as fh:

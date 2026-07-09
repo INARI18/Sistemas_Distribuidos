@@ -69,8 +69,6 @@ class DatabaseState:
                 received_records=self._engine.received,
                 integrated_volume=self._engine.integrated_volume,
                 analysis_ready_records=self._engine.analysis_ready_count,
-                detected_inconsistencies=self._engine.detected_inconsistencies,
-                corrected_inconsistencies=self._engine.corrected_inconsistencies,
                 average_response_time_ms=(
                     mean(self.response_times_ms) if self.response_times_ms else 0.0
                 ),

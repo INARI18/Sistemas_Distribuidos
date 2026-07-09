@@ -20,9 +20,6 @@ class SimulationReport:
     integrated_volume: int
     analysis_ready_records: int
 
-    detected_inconsistencies: int   # problemas de formato + campos civis faltantes
-    corrected_inconsistencies: int
-
     average_response_time_ms: float
 
     # quantos registros chegaram com campos civis faltantes e quantos
@@ -40,10 +37,25 @@ class SimulationReport:
         """Fração dos registros integrados utilizáveis para análise."""
         return _safe_ratio(self.analysis_ready_records, self.integrated_volume)
 
+    # Totais dos campos civis faltantes e dos que a base nacional recuperou.
     @property
-    def inconsistency_correction_rate(self) -> float:
-        """Fração das inconsistências detectadas que foram corrigidas."""
-        return _safe_ratio(self.corrected_inconsistencies, self.detected_inconsistencies)
+    def missing_total(self) -> int:
+        """Total de campos civis que chegaram faltantes."""
+        return sum(self.missing_by_field.values())
+
+    @property
+    def recovered_total(self) -> int:
+        """Total de campos faltantes que a base nacional recuperou (0 no Cenário A)."""
+        return sum(self.recovered_by_field.values())
+
+    @property
+    def missing_recovery_rate(self) -> float:
+        """Fração dos campos civis faltantes que a base nacional recuperou.
+
+        É 0 no Cenário A (não há a quem consultar) e sobe no Cenário B -- é aqui
+        que se vê o impacto da base nacional.
+        """
+        return _safe_ratio(self.recovered_total, self.missing_total)
 
     def as_dict(self) -> dict:
         return {
@@ -51,7 +63,7 @@ class SimulationReport:
             "access_rate": self.access_rate,
             "utilization_rate": self.utilization_rate,
             "integrated_volume": self.integrated_volume,
-            "inconsistency_correction_rate": self.inconsistency_correction_rate,
+            "missing_recovery_rate": self.missing_recovery_rate,
             "average_response_time_ms": self.average_response_time_ms,
             "missing_by_field": dict(self.missing_by_field),
             "recovered_by_field": dict(self.recovered_by_field),
@@ -67,8 +79,8 @@ class SimulationReport:
             f"  Utilization rate .......... {pct(self.utilization_rate)}"
             f"   ({self.analysis_ready_records}/{self.integrated_volume} analysis-ready)",
             f"  Integrated data volume .... {self.integrated_volume} records",
-            f"  Inconsistency correction .. {pct(self.inconsistency_correction_rate)}"
-            f"   ({self.corrected_inconsistencies}/{self.detected_inconsistencies} fixed)",
+            f"  Missing-data recovery ..... {pct(self.missing_recovery_rate)}"
+            f"   ({self.recovered_total}/{self.missing_total} fields filled)",
             f"  Average response time ..... {self.average_response_time_ms:.2f} ms",
         ]
         lines += self._render_breakdown()

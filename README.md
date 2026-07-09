@@ -68,20 +68,22 @@ nacional contribui no Cenário B.
 
 ## Métricas
 
-As cinco métricas do diagrama da proposta, calculadas em `SimulationReport`:
+As métricas de comparação, calculadas em `SimulationReport`:
 
-| Métrica                          | Significado                                                 |
-| -------------------------------- | ----------------------------------------------------------- |
-| **Taxa de acesso**               | Fração dos registros enviados que chegaram ao banco central |
-| **Taxa de utilização**           | Fração dos registros integrados que são úteis para análise  |
-| **Volume de dados integrado**    | Número de registros efetivamente armazenados no central     |
-| **Correção de inconsistências**  | Fração das inconsistências detectadas que foram corrigidas  |
-| **Tempo médio de resposta**      | Tempo médio de ida e volta por registro (ms)                |
+| Métrica                          | Significado                                                     |
+| -------------------------------- | --------------------------------------------------------------- |
+| **Taxa de acesso**               | Fração dos registros enviados que chegaram ao banco central     |
+| **Taxa de utilização**           | Fração dos registros integrados que são úteis para análise      |
+| **Volume de dados integrado**    | Número de registros efetivamente armazenados no central         |
+| **Recuperação de faltantes**     | Fração dos campos civis **faltantes** que a base nacional recuperou |
+| **Tempo médio de resposta**      | Tempo médio de ida e volta por registro (ms)                    |
 
-Espera-se que a comparação mostre uma **taxa de acesso** parecida nos dois
-cenários (os registros chegam de qualquer forma), enquanto as taxas de
-**utilização** e **correção** sobem no Cenário B, onde a base nacional repara os
-dados civis que o banco central não conseguiu consertar sozinho.
+Espera-se que a **taxa de acesso** e o **volume integrado** fiquem iguais nos dois
+cenários (os registros chegam de qualquer forma), enquanto a **taxa de utilização**
+e a **recuperação de faltantes** sobem no Cenário B — que é exatamente onde a base
+nacional entra, recuperando os dados civis que o banco central não conseguiu
+preencher sozinho. (No Cenário A a recuperação de faltantes é sempre 0%, pois não
+há a quem consultar.)
 
 ---
 
@@ -213,7 +215,7 @@ python main.py
 ```
 
 Ele roda **os dois cenários como execuções reais de container** sobre os mesmos
-dados e imprime as cinco métricas lado a lado (detalhes em *Comparando A × B num
+dados e imprime as métricas lado a lado (detalhes em *Comparando A × B num
 comando*, abaixo). Isto é tudo de que você precisa — os comandos por cenário na
 próxima seção são opcionais e só servem para inspecionar um cenário isolado.
 
@@ -331,15 +333,15 @@ Cenário B abaixo de uma pontuação perfeita, como a proposta espera:
   de identificado.
 
 Comparado ao Cenário A sobre os mesmos dados, a **taxa de acesso** permanece igual
-(os registros chegam de qualquer jeito), enquanto as taxas de **utilização** e
-**correção de inconsistências** sobem, quantificando exatamente o que a base
+(os registros chegam de qualquer jeito), enquanto a **taxa de utilização** e a
+**recuperação de faltantes** sobem, quantificando exatamente o que a base
 nacional acrescenta.
 
 ### Comparando A × B num comando
 
 As execuções em Docker acima rodam um cenário por vez. O `main.py` roda **os
 dois, cada um como uma execução real de container**, sobre os mesmos dados e
-imprime as cinco métricas lado a lado com o delta B − A — o objetivo central da
+imprime as métricas lado a lado com o delta B − A — o objetivo central da
 proposta:
 
 ```bash
@@ -424,35 +426,36 @@ as compara.
 === Simulation report: Scenario A - no national general database (Docker) ===
 
   Access rate ............... 100.00%   (1000/1000 records)
-  Utilization rate ..........  41.10%   (411/1000 analysis-ready)
+  Utilization rate ..........  43.70%   (437/1000 analysis-ready)
   Integrated data volume .... 1000 records
-  Inconsistency correction ..  59.08%   (1240/2099 fixed)
-  Average response time ..... 1.89 ms
+  Missing-data recovery .....   0.00%   (0/800 fields filled)
+  Average response time ..... 2.29 ms
 
   Missing civil data by field (recovered by national base):
-    cpf ..........  208 missing,    0 recovered
-    birth_date ...  217 missing,    0 recovered
-    sex ..........  219 missing,    0 recovered
-    city .........  215 missing,    0 recovered
+    cpf ..........  180 missing,    0 recovered
+    birth_date ...  216 missing,    0 recovered
+    sex ..........  201 missing,    0 recovered
+    city .........  203 missing,    0 recovered
 ```
 
-Rodando os mesmos dados sob o Cenário B, a taxa de acesso não muda enquanto a
-utilização e a correção sobem — e a quebra mostra exatamente onde: a base nacional
-recupera `birth_date`, `sex` e `city`, mas **nunca `cpf`**, porque sem um CPF o
-paciente não pode ser identificado em primeiro lugar.
+Rodando os mesmos dados sob o Cenário B, o acesso não muda, enquanto a utilização e
+a **recuperação de faltantes** sobem — e a quebra mostra exatamente onde: a base
+nacional recupera `birth_date`, `sex` e `city`, mas **nunca `cpf`**, porque sem um
+CPF o paciente não pode ser identificado em primeiro lugar. (O tempo de resposta
+também sobe, pois o banco central faz uma consulta HTTP a mais por registro.)
 
 ```
 === Simulation report: Scenario B - with national general database (Docker) ===
 
   Access rate ............... 100.00%   (1000/1000 records)
-  Utilization rate ..........  75.80%   (758/1000 analysis-ready)
+  Utilization rate ..........  78.10%   (781/1000 analysis-ready)
   Integrated data volume .... 1000 records
-  Inconsistency correction ..  81.04%   (1701/2099 fixed)
-  Average response time ..... 2.40 ms
+  Missing-data recovery .....  54.75%   (438/800 fields filled)
+  Average response time ..... 7.09 ms
 
   Missing civil data by field (recovered by national base):
-    cpf ..........  208 missing,    0 recovered
-    birth_date ...  217 missing,  154 recovered
-    sex ..........  219 missing,  152 recovered
-    city .........  215 missing,  155 recovered
+    cpf ..........  180 missing,    0 recovered
+    birth_date ...  216 missing,  156 recovered
+    sex ..........  201 missing,  139 recovered
+    city .........  203 missing,  143 recovered
 ```

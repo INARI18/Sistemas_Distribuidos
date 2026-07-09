@@ -28,8 +28,6 @@ class IngestionEngine:
         self._national = national
         self.stored: list[StandardizedRecord] = []
         self.received = 0
-        self.detected_inconsistencies = 0
-        self.corrected_inconsistencies = 0
 
         # quantos registros chegaram com cada campo
         # civil faltante, e quantos desses a base nacional recuperou 
@@ -39,7 +37,6 @@ class IngestionEngine:
     def ingest(self, record: ConsultationRecord) -> StandardizedRecord:
         self.received += 1
         data: dict = {}
-        detected = 0
         corrected = 0
         uncorrected_formats = 0
 
@@ -51,19 +48,13 @@ class IngestionEngine:
 
             if normalizer is None:
                 data[field] = raw
-                if raw is None:
-                    detected += 1
                 continue
 
             result = normalizer.normalize(raw)
             data[field] = result.value
-            if raw is None:
-                detected += 1
-            elif result.was_corrected:
-                detected += 1
+            if result.was_corrected:
                 corrected += 1
             elif not result.recognized:
-                detected += 1
                 uncorrected_formats += 1
 
         # Campos não essenciais são armazenados como recebidos
@@ -83,9 +74,6 @@ class IngestionEngine:
 
         unresolved_missing = sum(1 for f in ESSENTIAL_CIVIL_FIELDS if data.get(f) is None)
         analysis_ready = unresolved_missing == 0
-
-        self.detected_inconsistencies += detected
-        self.corrected_inconsistencies += corrected + filled
 
         standardized = StandardizedRecord(
             consultation_id=record.consultation_id,

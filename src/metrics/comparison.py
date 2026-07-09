@@ -31,7 +31,7 @@ class ComparisonReport:
             "deltas": {
                 "access_rate": self._delta("access_rate"),
                 "utilization_rate": self._delta("utilization_rate"),
-                "inconsistency_correction_rate": self._delta("inconsistency_correction_rate"),
+                "missing_recovery_rate": self._delta("missing_recovery_rate"),
                 "integrated_volume": self._delta("integrated_volume"),
                 "average_response_time_ms": self._delta("average_response_time_ms"),
             },
@@ -69,15 +69,16 @@ class ComparisonReport:
             pct_row("Access rate", "access_rate"),
             pct_row("Utilization rate", "utilization_rate"),
             int_row("Integrated volume", "integrated_volume"),
-            pct_row("Inconsistency correction", "inconsistency_correction_rate"),
+            pct_row("Missing-data recovery", "missing_recovery_rate"),
             ms_row("Avg response time", "average_response_time_ms"),
         ]
         lines += self._render_recovery()
         lines += [
             "",
             "  Note: both scenarios ran as containers over the same generated data,",
-            "  so access rate and integrated volume match; A cannot fill missing civil",
-            "  data (no national base), so its utilization and correction stay lower.",
+            "  so access rate and integrated volume match; A cannot recover missing",
+            "  civil data (no national base), so its utilization and missing-data",
+            "  recovery stay lower.",
         ]
         return "\n".join(lines)
 

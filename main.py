@@ -16,6 +16,22 @@ REPORT_A = os.path.join(REPORTS_DIR, "report-scenario-a.json")
 REPORT_B = os.path.join(REPORTS_DIR, "report-scenario-b.json")
 
 
+def _load_dotenv(path: str = ".env") -> None:
+    """Le as variaveis do .env"""
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.split("#", 1)[0].strip() 
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+
 def _compose(args: list[str], env: dict, profile: str | None = None) -> None:
     """Executa um comando ``docker compose``, levantando exceção se falhar."""
     cmd = ["docker", "compose"]
@@ -53,6 +69,8 @@ def _load(path: str) -> dict:
 
 
 def main() -> None:
+    _load_dotenv()   # faz o .env valer também para o main.py, não só para o compose
+
     posts = int(os.environ.get("POSTS", "5"))
     consultations = int(os.environ.get("CONSULTATIONS", "200"))
     base_seed = int(os.environ.get("BASE_SEED", "42"))
