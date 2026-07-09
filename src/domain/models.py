@@ -1,60 +1,39 @@
-"""Core domain models.
-
-This is the innermost layer of the project: plain data structures with no
-dependencies on other modules. Every other layer may depend on the domain,
-but the domain depends on nothing.
-"""
-
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Optional
 
-# Civil fields that are mandatory for a record to be usable in cross-post
-# epidemiological analysis. If any of them is missing, records from different
-# municipalities cannot be reliably linked.
+# Campos civis obrigatórios para que um registro seja utilizável em análise entre postos
 ESSENTIAL_CIVIL_FIELDS: tuple[str, ...] = ("cpf", "birth_date", "sex", "city")
-
 
 @dataclass
 class ConsultationRecord:
-    """Raw consultation data, in the local format of a single health post.
-
-    Because each post follows its own questionnaire standard, the same fields
-    may arrive in different formats or simply be absent.
-    """
-
+    """Dados brutos de consulta, no formato local de um único posto de saúde"""
     consultation_id: str
     source_post: str
 
-    # Patient civil data (may arrive in varied formats or empty).
     cpf: Optional[str] = None
     name: Optional[str] = None
     birth_date: Optional[str] = None
     sex: Optional[str] = None
     city: Optional[str] = None
 
-    # Clinical data of the consultation.
-    icd: Optional[str] = None          # ICD-10 diagnosis code
+    icd: Optional[str] = None          
     blood_pressure: Optional[str] = None
     weight: Optional[str] = None
 
-    # Quality annotations filled in at generation time. They act as the
-    # ground truth used to cross-check the computed metrics.
-    format_inconsistencies: int = 0    # fields delivered out of standard
-    missing_fields: int = 0            # essential civil fields absent
+    format_inconsistencies: int = 0    # campos entregues fora do padrão
+    missing_fields: int = 0            # campos civis essenciais ausentes
 
 
 @dataclass
 class StandardizedRecord:
-    """A record after being processed by the SUS central database."""
-
+    """Registro após ser processado pelo banco de dados do SUS (normalizado e padronizado)"""
     consultation_id: str
     source_post: str
     data: dict = field(default_factory=dict)
 
-    corrected_formats: int = 0         # format issues successfully fixed
-    uncorrected_formats: int = 0       # format issues left unresolved
-    unresolved_missing: int = 0        # absent civil data not filled in
-    filled_by_national: int = 0        # civil fields completed by the national DB (B)
-    analysis_ready: bool = False       # all civil fields present + standard
+    corrected_formats: int = 0         # problemas de formato corrigidos com sucesso
+    uncorrected_formats: int = 0       # problemas de formato deixados sem resolução
+    unresolved_missing: int = 0        # dados civis ausentes não preenchidos
+    filled_by_national: int = 0        # campos civis completados pela base nacional (cB)
+    analysis_ready: bool = False       # todos os campos civis presentes + padronizados

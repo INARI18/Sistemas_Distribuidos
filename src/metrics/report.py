@@ -1,8 +1,5 @@
-"""Metrics aggregation and reporting.
-
-Computes the five comparison metrics from the proposal diagram out of the raw
-counters collected by the actors. Kept free of any threading/transport
-concern so it can be unit-tested in isolation.
+"""Agregação e geração de relatório de métricas.
+Calcula as cinco métricas de comparação.
 """
 
 from __future__ import annotations
@@ -16,8 +13,6 @@ def _safe_ratio(numerator: float, denominator: float) -> float:
 
 @dataclass(frozen=True)
 class SimulationReport:
-    """The five metrics tracked by the proposal, plus their raw inputs."""
-
     scenario: str
 
     sent_records: int
@@ -25,31 +20,29 @@ class SimulationReport:
     integrated_volume: int
     analysis_ready_records: int
 
-    detected_inconsistencies: int   # format issues + missing civil fields
+    detected_inconsistencies: int   # problemas de formato + campos civis faltantes
     corrected_inconsistencies: int
 
     average_response_time_ms: float
 
-    # Per civil field: how many records arrived with it missing, and how many
-    # of those the national database recovered (always 0 in Scenario A).
+    # quantos registros chegaram com campos civis faltantes e quantos
+    # desses a base nacional recuperou (Cenário A é sempre 0).
     missing_by_field: dict = field(default_factory=dict)
     recovered_by_field: dict = field(default_factory=dict)
 
-    # -- the five headline metrics ------------------------------------- #
-
     @property
     def access_rate(self) -> float:
-        """Share of sent records that reached the central database."""
+        """Fração dos registros enviados que chegaram ao banco de dados central."""
         return _safe_ratio(self.received_records, self.sent_records)
 
     @property
     def utilization_rate(self) -> float:
-        """Share of integrated records usable for analysis."""
+        """Fração dos registros integrados utilizáveis para análise."""
         return _safe_ratio(self.analysis_ready_records, self.integrated_volume)
 
     @property
     def inconsistency_correction_rate(self) -> float:
-        """Share of detected inconsistencies that were corrected."""
+        """Fração das inconsistências detectadas que foram corrigidas."""
         return _safe_ratio(self.corrected_inconsistencies, self.detected_inconsistencies)
 
     def as_dict(self) -> dict:
@@ -65,7 +58,6 @@ class SimulationReport:
         }
 
     def render(self) -> str:
-        """Human-readable summary for the console."""
         pct = lambda x: f"{x * 100:6.2f}%"
         lines = [
             f"=== Simulation report: {self.scenario} ===",
@@ -83,7 +75,7 @@ class SimulationReport:
         return "\n".join(lines)
 
     def _render_breakdown(self) -> list[str]:
-        """Per-field missing/recovered table, shown when there is data for it."""
+        """Tabela de faltantes/recuperados por campo"""
         if not self.missing_by_field:
             return []
         lines = [

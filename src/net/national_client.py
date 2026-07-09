@@ -1,11 +1,4 @@
-"""Client the central database uses to reach the national database (Scenario B).
-
-This is the network-facing counterpart of :class:`~src.national.NationalDatabase`.
-It implements the same ``reconcile(data) -> result`` shape the
-:class:`~src.database.IngestionEngine` expects, but each call is a real HTTP
-round-trip to the ``national-database`` container. The engine cannot tell the
-difference between this client and an in-process national database -- that is
-the Dependency Inversion the engine relies on.
+"""Cliente que o banco de dados central usa para alcançar a base nacional (Cenário B).
 """
 
 from __future__ import annotations
@@ -21,15 +14,14 @@ from . import protocol
 
 @dataclass(frozen=True)
 class RemoteReconciliation:
-    """The national DB's reply, in the shape the engine reads (``.filled``)."""
-
+    """A resposta da base nacional"""
     filled: dict = field(default_factory=dict)
     identifiable: bool = False
     on_file: bool = False
 
 
 class NationalClient:
-    """HTTP client to the national database, used only by the central DB."""
+    """Cliente HTTP para a base nacional, usado apenas pelo banco de dados central."""
 
     def __init__(self, base_url: str):
         self._reconcile_url = base_url.rstrip("/") + protocol.PATH_RECONCILE
@@ -52,7 +44,7 @@ class NationalClient:
         )
 
     def wait_until_ready(self, timeout_s: float = 60.0) -> None:
-        """Block until the national database answers its health probe."""
+        """Bloqueia até a base nacional responder sua sonda de saúde."""
         health_url = self._base_url.rstrip("/") + protocol.PATH_HEALTH
         deadline = time.monotonic() + timeout_s
         while True:

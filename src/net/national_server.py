@@ -1,26 +1,9 @@
-"""HTTP server fronting the national general database (Scenario B).
-
-The network-facing face of :class:`~src.national.NationalDatabase`. It runs as
-the ``national-database`` container and is reachable by exactly one actor -- the
-central SUS database -- mirroring the proposal's rule that the national database
-talks only to the central database, never to a post.
-
-Endpoints:
-
-- ``POST /reconcile`` -- given one record as the central DB standardized it,
-  return the essential civil fields the national DB can supply.
-- ``GET /health``     -- readiness probe so the central DB can wait for it.
-
-Unlike the central database, the national database does not finalize on its own:
-it stays up serving reconcile requests until the run tears it down, because it
-has no view of when the posts go quiet.
+"""Servidor HTTP que dá a face de rede à base nacional geral (Cenário B).
 """
 
 from __future__ import annotations
-
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-
 from ..national import NationalDatabase
 from . import protocol
 
@@ -30,7 +13,7 @@ def _make_handler(national: NationalDatabase):
         protocol_version = "HTTP/1.1"
 
         def log_message(self, *args) -> None:  # noqa: D401
-            pass
+            pass  # Silencia o log padrão por requisição.
 
         def _send_json(self, status: int, body: dict) -> None:
             payload = json.dumps(body).encode("utf-8")
@@ -70,7 +53,7 @@ def _make_handler(national: NationalDatabase):
 
 
 def serve(host: str, port: int, coverage: float) -> None:
-    """Serve reconcile requests until the container is stopped."""
+    """Atende requisições de conciliação até o container ser parado."""
     national = NationalDatabase(coverage=coverage)
     httpd = ThreadingHTTPServer((host, port), _make_handler(national))
     print(

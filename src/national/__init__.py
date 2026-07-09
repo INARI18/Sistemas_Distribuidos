@@ -1,4 +1,4 @@
-"""National database layer: the authoritative civil registry of Scenario B."""
+"""Camada de base nacional: o registro civil autoritativo do Cenário B."""
 
 from .national_database import NationalDatabase, ReconciliationResult
 

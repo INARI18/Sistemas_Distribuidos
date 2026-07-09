@@ -1,6 +1,7 @@
-"""Metrics layer: aggregation of the proposal's comparison metrics."""
+"""Camada de métricas: agregação das métricas de comparação da proposta."""
 
-from .export import write_report
+from .comparison import ComparisonReport
+from .export import write_comparison, write_report
 from .report import SimulationReport
 
-__all__ = ["SimulationReport", "write_report"]
+__all__ = ["ComparisonReport", "SimulationReport", "write_comparison", "write_report"]

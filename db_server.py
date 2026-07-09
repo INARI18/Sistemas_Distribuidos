@@ -1,17 +1,5 @@
-"""Entry point for the central SUS database container.
-
-Reads its configuration from the environment (so it can be driven entirely by
-docker-compose) and serves until the health posts go quiet, at which point it
-prints the final report and exits.
-
-Environment variables:
-    HOST          bind address                                  (default 0.0.0.0)
-    PORT          listen port                                   (default 8000)
-    IDLE_TIMEOUT  seconds of inactivity before finalizing       (default 5)
-    SCENARIO      'A' (isolated) or 'B' (national database)     (default A)
-    NATIONAL_URL  base URL of the national database (Scenario B)
-                                          (default http://national-database:9000)
-    REPORT_DIR    directory to also save the report as JSON/CSV (default reports)
+"""
+Ponto de entrada para o container do banco de dados central do SUS
 """
 
 from __future__ import annotations

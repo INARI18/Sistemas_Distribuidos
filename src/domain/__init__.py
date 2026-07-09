@@ -1,4 +1,4 @@
-"""Domain layer: core data structures shared across the simulation."""
+"""Camada de domínio: estruturas de dados centrais compartilhadas pela simulação."""
 
 from .models import (
     ESSENTIAL_CIVIL_FIELDS,

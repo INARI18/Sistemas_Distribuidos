@@ -1,9 +1,5 @@
-"""Wire protocol shared by the database server and the post clients.
-
-Keeps the HTTP endpoint paths and the (de)serialization of the messages in one
-place, so the server and the client can never disagree about the format. The
-payloads are plain JSON built from the existing domain dataclasses -- the wire
-is just a transport, the meaning lives in ``src/domain``.
+"""Protocolo de comunicação compartilhado pelo servidor do banco de dados e 
+pelos clientes dos postos.
 """
 
 from __future__ import annotations
@@ -13,41 +9,34 @@ from typing import Any
 
 from ..domain import ConsultationRecord
 
-# HTTP endpoints exposed by the central database server.
-PATH_INGEST = "/ingest"        # POST: a single consultation record
-PATH_COMPLETE = "/complete"    # POST: a post's end-of-run summary
-PATH_REPORT = "/report"        # GET:  the aggregated metrics report
-PATH_HEALTH = "/health"        # GET:  readiness probe
-
-# HTTP endpoint exposed by the national database server (Scenario B). The
-# central database is the only actor that calls it.
-PATH_RECONCILE = "/reconcile"  # POST: complete the civil data of one record
-
+# Endpoints HTTP expostos pelo servidor do banco de dados central.
+PATH_CLAIM = "/claim"          
+PATH_INGEST = "/ingest"        
+PATH_COMPLETE = "/complete"    
+PATH_REPORT = "/report"        
+PATH_HEALTH = "/health"        
+PATH_RECONCILE = "/reconcile" # base nacional
 
 def record_to_json(record: ConsultationRecord) -> dict[str, Any]:
-    """Serialize a consultation record for transport."""
+    """Serializa um registro de consulta para transporte"""
     return asdict(record)
 
-
 def record_from_json(payload: dict[str, Any]) -> ConsultationRecord:
-    """Rebuild a consultation record received over the wire."""
+    """Reconstrói um registro de consulta recebido pela rede"""
     return ConsultationRecord(**payload)
 
-
 def completion_payload(post_id: str, sent: int, response_times_ms: list[float]) -> dict[str, Any]:
-    """Summary a post sends once it has finished submitting its records."""
+    """Resumo que um posto envia após terminar de enviar seus registros"""
     return {
         "post_id": post_id,
         "sent": sent,
         "response_times_ms": response_times_ms,
     }
 
-
 def reconcile_request(data: dict[str, Any]) -> dict[str, Any]:
-    """Request the central DB sends to the national DB for one record."""
+    """Requisição que o banco central envia à base nacional"""
     return {"data": data}
 
-
 def reconcile_response(filled: dict[str, Any], identifiable: bool, on_file: bool) -> dict[str, Any]:
-    """Reply the national DB sends back with the fields it could supply."""
+    """Resposta que a base nacional envia de volta com os campos que conseguiu fornecer"""
     return {"filled": filled, "identifiable": identifiable, "on_file": on_file}

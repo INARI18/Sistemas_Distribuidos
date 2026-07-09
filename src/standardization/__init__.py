@@ -1,4 +1,4 @@
-"""Standardization layer: strategies that map regional formats to canonical."""
+"""Camada de padronização: estratégias que mapeiam formatos regionais para o formato canônico."""
 
 from .normalizers import (
     BirthDateNormalizer,

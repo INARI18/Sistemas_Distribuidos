@@ -1,52 +1,33 @@
-"""Field normalization strategies.
-
-Each normalizer knows how to turn one field's many regional formats into a
-single canonical form. They all implement the same `FieldNormalizer`
-protocol, so the SUS database can hold a list of them and apply each one
-without knowing the concrete type (Strategy pattern + Dependency Inversion).
-
-Adding support for a new field means adding a new normalizer here -- no
-existing class needs to change (Open/Closed principle).
-"""
+"""Normalização de campos para a forma que o banco do SUS usa"""
 
 from __future__ import annotations
-
 import re
 from dataclasses import dataclass
 from typing import Optional, Protocol
 
-
 @dataclass(frozen=True)
 class NormalizationResult:
-    """Outcome of normalizing a single field value."""
-
-    value: Optional[str]        # canonical value, or None if unrecognizable
-    already_standard: bool      # input was already in canonical form
-    recognized: bool            # input could be parsed into canonical form
+    value: Optional[str]        
+    already_standard: bool      # a entrada já estava na forma canônica
+    recognized: bool            # a entrada pôde ser convertida para a forma canônica
 
     @property
     def was_corrected(self) -> bool:
-        """True when a non-standard value was successfully standardized."""
+        """True quando um valor fora do padrão foi padronizado com sucesso"""
         return self.recognized and not self.already_standard
 
 
 class FieldNormalizer(Protocol):
-    """Contract every field normalizer must satisfy."""
+    """Contrato que todo normalizador de campo deve satisfazer"""
 
     field_name: str
 
     def normalize(self, raw_value: Optional[str]) -> NormalizationResult:
         ...
 
-
-# A value that is absent is reported as standard + recognized so it does not
-# count as a *format* error; missing data is tracked separately by the caller.
 _ABSENT = NormalizationResult(value=None, already_standard=True, recognized=True)
 
-
 class CpfNormalizer:
-    """Canonical CPF form: 000.000.000-00."""
-
     field_name = "cpf"
     _CANONICAL = re.compile(r"\d{3}\.\d{3}\.\d{3}-\d{2}")
 
@@ -62,8 +43,6 @@ class CpfNormalizer:
 
 
 class BirthDateNormalizer:
-    """Canonical date form: YYYY-MM-DD."""
-
     field_name = "birth_date"
     _ISO = re.compile(r"\d{4}-\d{2}-\d{2}")
     _BR = re.compile(r"(\d{2})[/-](\d{2})[/-](\d{4})")
@@ -81,8 +60,6 @@ class BirthDateNormalizer:
 
 
 class SexNormalizer:
-    """Canonical sex form: 'M' / 'F'."""
-
     field_name = "sex"
     _ALIASES = {"1": "M", "2": "F", "Male": "M", "Female": "F"}
 
@@ -96,5 +73,5 @@ class SexNormalizer:
 
 
 def default_normalizers() -> list[FieldNormalizer]:
-    """Factory for the normalizer set the SUS database uses by default."""
+    """Fábrica do conjunto de normalizadores do banco do SUS"""
     return [CpfNormalizer(), BirthDateNormalizer(), SexNormalizer()]

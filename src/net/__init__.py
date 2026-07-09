@@ -1,8 +1,8 @@
-"""Network transport layer.
+"""Camada de transporte de rede.
 
-The actors of the simulation are real distributed processes that talk over
-HTTP, running as separate Docker containers on a shared network. This layer is
-just the transport: the meaning lives in the inner layers (``domain``,
-``generation``, ``standardization``, ``metrics``) and in the database core
-(``src/database.py``).
+Os atores da simulação são processos distribuídos reais que se comunicam via
+HTTP, rodando como containers Docker separados em uma rede compartilhada. Esta
+camada é apenas o transporte: o significado vive nas camadas internas
+(``domain``, ``generation``, ``standardization``, ``metrics``) e no núcleo do
+banco de dados (``src/database.py``).
 """

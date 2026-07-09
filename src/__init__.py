@@ -1,1 +1,1 @@
-"""SUS data integration & standardization simulation (Scenario A)."""
+"""Simulação de integração e padronização de dados do SUS (Cenário A)."""

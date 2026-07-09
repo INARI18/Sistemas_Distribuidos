@@ -21,6 +21,15 @@
 # The central database does not need to be told how many posts there are: it
 # prints the final metrics report to its logs once the posts go quiet, then
 # every container exits on its own.
+#
+# A x B comparison -- run both scenarios over the SAME data (each as its own
+# container run) and print the five metrics side by side, in one command:
+#
+#   python main.py
+#
+# `main.py` drives Docker: it brings up Scenario A, waits for the database to
+# finalize, then Scenario B, and reads the two reports both runs saved under
+# ./reports. Reproducible post seeds keep the two runs' data identical.
 
 services:
   sus-database:

@@ -1,245 +1,314 @@
-# SUS Data Integration & Standardization — Simulation
+# Integração e Padronização de Dados do SUS — Simulação
 
-A simulation of the data flow inside Brazil's public health system (SUS),
-built to study what happens to data quality when many health posts — each
-following its own questionnaire standard — send patient records to a central
-database, and how much an authoritative national database can improve that.
-
----
-
-## Purpose
-
-The SUS is large and regionally heterogeneous. During a consultation, the data
-a patient reports is stored locally, but the questionnaire used at each post
-may not match the standard expected by the central database. The same field
-ends up recorded differently across municipalities, which harms any
-cross-municipality analysis.
-
-The simulation **measures data quality across two scenarios** and compares them
-using the same metrics, to quantify the value of standardizing and integrating
-the data:
-
-- **Scenario A — no national general database.** Isolated health posts send
-  records to the central SUS database. The central database can standardize the
-  formats it recognizes, but there is no external authoritative source, so civil
-  data that arrived missing or in an unrecognizable form cannot be repaired.
-
-- **Scenario B — with national general database.** A national database talks
-  only to the central SUS database, filling in missing civil data and correcting
-  inconsistencies the central database could not resolve on its own.
-
-Comparing the two answers the central question of the proposal: *how much do
-access and usability of the data improve once a national database completes and
-reconciles it?*
-
-> **Status.** **Both scenarios are implemented.** Scenario A runs by default;
-> Scenario B adds a `national-database` container that the central database
-> consults to complete the civil data it could not resolve on its own. It was
-> added without changing the existing domain, generation, standardization or
-> metrics layers — only an optional reconciler was injected into the central
-> database core (see *Running → Scenario B*).
+Uma simulação do fluxo de dados dentro do sistema público de saúde do Brasil (o
+SUS), feita para estudar o que acontece com a qualidade dos dados quando muitos
+postos de saúde — cada um seguindo o seu próprio padrão de questionário — enviam
+registros de pacientes a um banco de dados central, e o quanto uma base nacional
+de referência pode melhorar isso.
 
 ---
 
-## What is being modelled
+## Propósito
 
-| Real-world element              | In the simulation                                          |
+O SUS é grande e regionalmente heterogêneo. Durante uma consulta, os dados que o
+paciente informa são armazenados localmente, mas o questionário usado em cada
+posto pode não bater com o padrão esperado pelo banco de dados central. O mesmo
+campo acaba registrado de formas diferentes entre municípios, o que prejudica
+qualquer análise entre municípios.
+
+A simulação **mede a qualidade dos dados em dois cenários** e os compara usando
+as mesmas métricas, para quantificar o valor de padronizar e integrar os dados:
+
+- **Cenário A — sem base nacional geral.** Postos de saúde isolados enviam
+  registros ao banco de dados central do SUS. O banco central consegue padronizar
+  os formatos que reconhece, mas não há fonte externa de referência, então dados
+  civis que chegaram faltando ou em formato irreconhecível não podem ser
+  reparados.
+
+- **Cenário B — com base nacional geral.** Uma base nacional fala apenas com o
+  banco de dados central do SUS, preenchendo dados civis faltantes e corrigindo
+  inconsistências que o banco central não conseguiu resolver sozinho.
+
+Comparar os dois responde à pergunta central da proposta: *o quanto o acesso e a
+usabilidade dos dados melhoram depois que uma base nacional os completa e
+concilia?*
+
+> **Status.** **Os dois cenários estão implementados.** O Cenário A roda por
+> padrão; o Cenário B adiciona um container `national-database` que o banco
+> central consulta para completar os dados civis que não conseguiu resolver
+> sozinho. Ele foi adicionado sem alterar as camadas existentes de domínio,
+> geração, padronização ou métricas — apenas um conciliador opcional foi injetado
+> no núcleo do banco central (veja *Executando → Cenário B*).
+
+---
+
+## O que está sendo modelado
+
+| Elemento do mundo real          | Na simulação                                               |
 | ------------------------------- | ---------------------------------------------------------- |
-| Health post (*Posto de Saúde*)  | a `health-post` container that generates and sends records |
-| Local data of each post         | A per-post `RegionalProfile` (formats + missing rate)      |
-| Central SUS database            | the `sus-database` container that standardizes and stores  |
-| National general database (B)   | a `national-database` container the central database queries |
-| Network between actors          | The Docker network (real HTTP requests)                    |
-| Posts not talking to each other | Posts only ever message the database, never a peer         |
+| Posto de Saúde                  | um container `health-post` que gera e envia registros      |
+| Dados locais de cada posto      | um `RegionalProfile` por posto (formatos + taxa de ausência) |
+| Banco de dados central do SUS   | o container `sus-database` que padroniza e armazena        |
+| Base nacional geral (B)         | um container `national-database` que o banco central consulta |
+| Rede entre os atores            | a rede Docker (requisições HTTP reais)                     |
+| Postos que não falam entre si   | postos só enviam mensagens ao banco, nunca a um par        |
 
-Each post follows its own **regional profile**: a CPF style, a date style, a
-sex-encoding style, and a probability of leaving essential fields blank. That
-is what makes records from different posts incompatible.
+Cada posto segue o seu próprio **perfil regional**: um estilo de CPF, um estilo
+de data, um estilo de codificação de sexo e uma probabilidade de deixar campos
+essenciais em branco. É isso que torna registros de postos diferentes
+incompatíveis entre si.
 
-The central database can **normalize the formats it recognizes** (e.g. turn
-`01/02/1990` or `01-02-1990` into `1990-02-01`, `1`/`Male` into `M`, an
-unpunctuated CPF into `000.000.000-00`). What it cannot do on its own — invent
-missing or unrecognizable civil data — is exactly what the national database
-contributes in Scenario B.
-
----
-
-## Metrics
-
-The five metrics from the proposal diagram, computed in `SimulationReport`:
-
-| Metric                       | Meaning                                                     |
-| ---------------------------- | ----------------------------------------------------------- |
-| **Access rate**              | Share of sent records that reached the central database     |
-| **Utilization rate**         | Share of integrated records that are usable for analysis    |
-| **Integrated data volume**   | Number of records effectively stored centrally              |
-| **Inconsistency correction** | Share of detected inconsistencies that were corrected       |
-| **Average response time**    | Mean round-trip time per record (ms)                        |
-
-The comparison is expected to show a similar **access rate** in both scenarios
-(records get through either way), while the **utilization** and **correction**
-rates rise in Scenario B, where the national database repairs the civil data the
-central database could not fix alone.
+O banco central consegue **normalizar os formatos que reconhece** (por exemplo,
+transformar `01/02/1990` ou `01-02-1990` em `1990-02-01`, `1`/`Male` em `M`, um
+CPF sem pontuação em `000.000.000-00`). O que ele não consegue fazer sozinho —
+inventar dados civis faltantes ou irreconhecíveis — é exatamente o que a base
+nacional contribui no Cenário B.
 
 ---
 
-## Architecture
+## Métricas
 
-The project follows a layered, modular design. Dependencies point **inward**:
-outer layers know about inner ones, never the reverse.
+As cinco métricas do diagrama da proposta, calculadas em `SimulationReport`:
+
+| Métrica                          | Significado                                                 |
+| -------------------------------- | ----------------------------------------------------------- |
+| **Taxa de acesso**               | Fração dos registros enviados que chegaram ao banco central |
+| **Taxa de utilização**           | Fração dos registros integrados que são úteis para análise  |
+| **Volume de dados integrado**    | Número de registros efetivamente armazenados no central     |
+| **Correção de inconsistências**  | Fração das inconsistências detectadas que foram corrigidas  |
+| **Tempo médio de resposta**      | Tempo médio de ida e volta por registro (ms)                |
+
+Espera-se que a comparação mostre uma **taxa de acesso** parecida nos dois
+cenários (os registros chegam de qualquer forma), enquanto as taxas de
+**utilização** e **correção** sobem no Cenário B, onde a base nacional repara os
+dados civis que o banco central não conseguiu consertar sozinho.
+
+---
+
+## Arquitetura
+
+O projeto segue um desenho modular em camadas. As dependências apontam para
+**dentro**: camadas externas conhecem as internas, nunca o contrário.
+
+### Atores e comunicação
+
+Cada ator é um container; a comunicação é por HTTP na rede Docker. Os postos só
+falam com o banco central, e a base nacional (Cenário B) é consultada apenas pelo
+banco central — nunca por um posto.
+
+```mermaid
+graph LR
+    P1[health-post 1]
+    P2[health-post 2]
+    PN[health-post N]
+    DB[(sus-database<br/>banco de dados central)]
+    NAT[(national-database<br/>base nacional)]
+    P1 -->|HTTP /ingest| DB
+    P2 -->|HTTP /ingest| DB
+    PN -->|HTTP /ingest| DB
+    DB -.->|HTTP /reconcile · somente Cenário B| NAT
+```
+
+### Estrutura de arquivos
 
 ```
-db_server.py                 entry point for the central database container
-post_runner.py               entry point for a health-post container
-national_server.py           entry point for the national database container (B)
-Dockerfile                   one image, shared by all three roles
-docker-compose.yml           database + N isolated posts + national database (B)
-.env                         tunable parameters (read by Compose)
+db_server.py                 entry point do container do banco de dados central
+post_runner.py               entry point de um container health-post
+national_server.py           entry point do container da base nacional (B)
+Dockerfile                   uma imagem, compartilhada pelos três papéis
+docker-compose.yml           banco + N postos isolados + base nacional (B)
+.env                         parâmetros ajustáveis (lidos pelo Compose)
 └── src/
-    ├── domain/              core data models — depends on nothing
+    ├── domain/              modelos de dados do núcleo — não depende de nada
     │   └── models.py        ConsultationRecord, StandardizedRecord
-    ├── standardization/     format normalization (Strategy pattern)
+    ├── standardization/     normalização de formato (padrão Strategy)
     │   └── normalizers.py   CpfNormalizer, BirthDateNormalizer, SexNormalizer
-    ├── generation/          synthetic data with regional variance
+    ├── generation/          dados sintéticos com variância regional
     │   ├── regional_profile.py
     │   └── record_generator.py
-    ├── national/            authoritative civil registry (Scenario B core)
-    │   └── national_database.py   NationalDatabase — fills/corrects civil data
-    ├── metrics/             metric aggregation (pure, no transport)
+    ├── national/            registro civil de referência (núcleo do Cenário B)
+    │   └── national_database.py   NationalDatabase — preenche/corrige dados civis
+    ├── metrics/             agregação de métricas (pura, sem transporte)
     │   └── report.py        SimulationReport
-    ├── database.py          IngestionEngine — the central database core
-    └── net/                 network transport (the Docker deployment)
-        ├── protocol.py          wire format + endpoint paths
-        ├── server.py            HTTP central database server (wraps IngestionEngine)
-        ├── client.py            health-post HTTP client
-        ├── national_server.py   HTTP national database server (wraps NationalDatabase)
-        └── national_client.py   client the central database uses to reach it
+    ├── database.py          IngestionEngine — o núcleo do banco central
+    └── net/                 transporte de rede (o deploy em Docker)
+        ├── protocol.py          formato da comunicação + caminhos dos endpoints
+        ├── server.py            servidor HTTP do banco central (embrulha IngestionEngine)
+        ├── client.py            cliente HTTP do health-post
+        ├── national_server.py   servidor HTTP da base nacional (embrulha NationalDatabase)
+        └── national_client.py   cliente que o banco central usa para alcançá-la
 ```
 
-The simulation logic lives in transport-free layers (domain, generation,
-standardization, metrics, national) plus the `IngestionEngine` that standardizes
-and stores each record. The `net` layer is just the wire: it carries records
-from the post containers to the central database, and — in Scenario B — the
-central database's reconcile requests to the national database, as real HTTP
-requests.
+A lógica da simulação vive em camadas sem dependência de transporte (domínio,
+geração, padronização, métricas, nacional) mais o `IngestionEngine`, que
+padroniza e armazena cada registro. A camada `net` é apenas o fio: ela carrega os
+registros dos containers de posto até o banco central e — no Cenário B — as
+requisições de conciliação do banco central até a base nacional, como requisições
+HTTP reais.
 
-### Design principles applied
+### Princípios de projeto aplicados
 
-- **Single Responsibility** — generation, standardization, transport and
-  metrics each live in their own module.
-- **Open/Closed** — supporting a new field means adding a normalizer; no
-  existing class changes.
-- **Dependency Inversion** — `IngestionEngine` depends on the `FieldNormalizer`
-  *protocol*, not on concrete normalizers (they are injected).
-- **Testability** — domain, standardization and metrics layers are free of any
-  transport concern and can be unit-tested in isolation.
-- **Reproducibility** — every random choice is seed-driven. Pinning each post's
-  index makes its seed `BASE_SEED + index*1000`, so a run becomes fully
-  repeatable and a future Scenario B can reuse the exact same data (see the
-  reproducibility note under *Running*).
+- **Responsabilidade Única** — geração, padronização, transporte e métricas vivem
+  cada um em seu próprio módulo.
+- **Aberto/Fechado** — suportar um novo campo significa adicionar um normalizador;
+  nenhuma classe existente muda.
+- **Inversão de Dependência** — o `IngestionEngine` depende do *protocolo*
+  `FieldNormalizer`, não dos normalizadores concretos (eles são injetados).
+- **Testabilidade** — as camadas de domínio, padronização e métricas são livres de
+  qualquer preocupação de transporte e podem ser testadas isoladamente.
+- **Reprodutibilidade** — toda escolha aleatória é guiada por seed. Fixar o índice
+  de cada posto faz o seu seed ser `BASE_SEED + index*1000`, então uma execução se
+  torna totalmente repetível e dois cenários reutilizam exatamente os mesmos dados
+  (veja a nota de reprodutibilidade em *Executando*).
 
-### Why the actor model
+### Por que o modelo de atores
 
-Posts and the database run as separate containers that communicate **only**
-through HTTP requests across the Docker network. This mirrors the proposal's
-isolated containers for real: each post is its own container with no route to
-its peers, and the only legal destination for a post's data is the central
-database.
+Postos e o banco de dados rodam como containers separados que se comunicam
+**apenas** por requisições HTTP através da rede Docker. Isso espelha de verdade os
+containers isolados da proposta: cada posto é o seu próprio container, sem rota
+até os pares, e o único destino legítimo para os dados de um posto é o banco de
+dados central.
+
+### Fluxo de uma execução
+
+Ao iniciar, cada posto reivindica um índice reprodutível, gera seus registros e
+os envia um a um. No Cenário B, o banco central consulta a base nacional para
+cada registro. Quando o tráfego cessa, o banco imprime e salva o relatório.
+
+```mermaid
+sequenceDiagram
+    participant P as health-post
+    participant DB as sus-database
+    participant N as national-database
+    P->>DB: POST /claim
+    DB-->>P: índice · seed = BASE_SEED + índice × 1000
+    loop cada registro gerado
+        P->>DB: POST /ingest
+        Note over DB: normaliza os formatos reconhecidos
+        opt somente Cenário B
+            DB->>N: POST /reconcile
+            N-->>DB: campos civis faltantes, se houver CPF + cobertura
+        end
+        DB-->>P: ok
+    end
+    P->>DB: POST /complete · resumo do posto
+    Note over DB: após IDLE_TIMEOUT sem tráfego,<br/>imprime e salva o relatório
+```
 
 ---
 
-## Running
+## Executando
 
-The simulation runs entirely on Docker — one container per actor. The only
-requirement on the host is Docker with Compose v2 (no Python, no dependencies).
+A simulação roda inteiramente em Docker — um container por ator. A máquina host
+precisa de Docker com Compose v2 e Python 3 (apenas biblioteca padrão, sem
+dependências de terceiros) para disparar a execução.
 
-### Both scenarios at a glance
+### Um comando — a comparação A × B
+
+Como todo o objetivo é comparar os dois cenários, esse é o comando único que você
+roda:
 
 ```bash
-# Scenario A — isolated posts + central database (default, no national base)
+python main.py
+```
+
+Ele roda **os dois cenários como execuções reais de container** sobre os mesmos
+dados e imprime as cinco métricas lado a lado (detalhes em *Comparando A × B num
+comando*, abaixo). Isto é tudo de que você precisa — os comandos por cenário na
+próxima seção são opcionais e só servem para inspecionar um cenário isolado.
+
+### Rodando um cenário isolado (opcional)
+
+O `main.py` já roda os dois por baixo dos panos, mas você também pode disparar
+cada cenário sozinho:
+
+```bash
+# Cenário A — postos isolados + banco central (padrão, sem base nacional)
 docker compose up --build
 
-# Scenario B — adds the national database that completes the civil data
+# Cenário B — adiciona a base nacional que completa os dados civis
 SCENARIO=B docker compose --profile scenario-b up --build
 ```
 
 ```powershell
-# PowerShell equivalents
+# Equivalentes no PowerShell
 docker compose up --build
 $env:SCENARIO="B"; docker compose --profile scenario-b up --build
 ```
 
-The only differences are the **`--profile scenario-b`** flag (which starts the
-extra `national-database` container) and **`SCENARIO=B`** (which tells the central
-database to consult it). Everything else — posts, scaling, tuning, the final
-report — works the same in both. Each run prints its own report labelled with the
-scenario it ran; compare the two reports to see what the national database adds.
-Details of Scenario B are in [its own section](#scenario-b--adding-the-national-database) below.
+As únicas diferenças são a flag **`--profile scenario-b`** (que sobe o container
+extra `national-database`) e **`SCENARIO=B`** (que diz ao banco central para
+consultá-la). Todo o resto — postos, escala, ajustes, o relatório final —
+funciona igual nos dois. Detalhes do Cenário B estão na *sua própria seção*
+abaixo.
 
-### Scenario A (default)
+### Cenário A (padrão)
 
-Run it the first time (the `--build` builds the image):
+Rode pela primeira vez (o `--build` constrói a imagem):
 
 ```bash
 docker compose up --build
 ```
 
-This starts one `sus-database` container and five `health-post` containers on a
-shared Docker network. Each post submits its records to the database over HTTP;
-once the posts go quiet, the database prints the final report to its logs and
-every container exits on its own.
+Isso sobe um container `sus-database` e cinco containers `health-post` numa rede
+Docker compartilhada. Cada posto submete seus registros ao banco via HTTP; assim
+que os postos ficam quietos, o banco imprime o relatório final nos seus logs e
+cada container encerra sozinho.
 
-> Run with plain `docker compose up`, **not** `--abort-on-container-exit`: that
-> flag kills the database the moment the first post exits, before it can print
-> the report.
+> Rode com um `docker compose up` simples, **não** com `--abort-on-container-exit`:
+> essa flag mata o banco no instante em que o primeiro posto encerra, antes que
+> ele consiga imprimir o relatório.
 
-### You don't need `--build` every time
+### Você não precisa de `--build` toda vez
 
-`--build` only rebuilds the image, which is needed **after you change the code
-or the Dockerfile**. On every other run just use:
+O `--build` só reconstrói a imagem, o que é necessário **depois que você muda o
+código ou o Dockerfile**. Em qualquer outra execução, basta usar:
 
 ```bash
 docker compose up
 ```
 
-It reuses the already-built `sus-sim:latest` image (one image, shared by the
-database and all the posts — nothing is duplicated per post).
+Ele reaproveita a imagem `sus-sim:latest` já construída (uma imagem só,
+compartilhada pelo banco e por todos os postos — nada é duplicado por posto).
 
-### Cleaning up (optional)
+### Limpando (opcional)
 
-The containers stop on their own when the run ends, but they stay on disk in an
-"exited" state. To remove them and the network:
+Os containers param sozinhos quando a execução termina, mas ficam no disco em
+estado "exited". Para removê-los e à rede:
 
 ```bash
 docker compose down
 ```
 
-This is just housekeeping — you can re-run `docker compose up` without it. It is
-worth doing when you *lower* the post count (e.g. went from `--scale
-health-post=8` back to 3), so the leftover containers don't linger as orphans.
+Isso é só arrumação — você pode rodar `docker compose up` de novo sem fazer isso.
+Vale a pena quando você *diminui* o número de postos (por exemplo, voltou de
+`--scale health-post=8` para 3), para que os containers restantes não fiquem como
+órfãos.
 
-### Changing the number of posts
+### Mudando o número de postos
 
-The post count is just how many replicas of the `health-post` service you ask
-for — the database discovers them at runtime, nothing else needs to change:
+O número de postos é só quantas réplicas do serviço `health-post` você pede — o
+banco as descobre em tempo de execução, nada mais precisa mudar:
 
 ```bash
 docker compose up --scale health-post=8
 ```
 
-Each replica derives a distinct seed from its container id, so every post gets
-its own regional profile automatically.
+Cada réplica reivindica um índice distinto (`0, 1, 2, …`) do banco ao iniciar e
+deriva o seu seed como `BASE_SEED + index*1000`, então cada posto ganha seu
+próprio perfil regional automaticamente — e a população é reprodutível entre
+execuções (veja *Relatório salvo (JSON + CSV)*).
 
-### Scenario B — adding the national database
+### Cenário B — adicionando a base nacional
 
-Scenario B starts a third actor: the `national-database` container. The central
-database consults it for every record, asking it to supply the essential civil
-fields it could not complete on its own. The national database talks only to the
-central database — posts never see it.
+O Cenário B sobe um terceiro ator: o container `national-database`. O banco
+central o consulta para cada registro, pedindo que ele forneça os campos civis
+essenciais que não conseguiu completar sozinho. A base nacional fala apenas com o
+banco central — os postos nunca a veem.
 
-It lives behind a Compose **profile**, so Scenario A stays a plain
-`docker compose up`. To run Scenario B, activate the profile and set `SCENARIO=B`
-so the central database knows to consult it:
+Ela vive atrás de um **profile** do Compose, então o Cenário A continua um
+`docker compose up` simples. Para rodar o Cenário B, ative o profile e defina
+`SCENARIO=B` para que o banco central saiba que deve consultá-la:
 
 ```bash
 # bash
@@ -251,31 +320,57 @@ SCENARIO=B docker compose --profile scenario-b up --build
 $env:SCENARIO="B"; docker compose --profile scenario-b up --build
 ```
 
-The national database is **not** an oracle. Two real-world limits keep
-Scenario B short of a perfect score, as the proposal expects:
+A base nacional **não** é um oráculo. Dois limites do mundo real mantêm o
+Cenário B abaixo de uma pontuação perfeita, como a proposta espera:
 
-- **Identification** — a patient can only be looked up through a usable CPF. A
-  record whose CPF arrived missing cannot be matched, so it stays incomplete.
-- **Coverage** — the registry holds only a `COVERAGE` fraction of identifiable
-  patients (default `0.9`); the rest cannot be completed even once identified.
+- **Identificação** — um paciente só pode ser consultado por meio de um CPF
+  utilizável. Um registro cujo CPF chegou faltando não pode ser correspondido,
+  então continua incompleto.
+- **Cobertura** — o registro contém apenas uma fração `COVERAGE` dos pacientes
+  identificáveis (padrão `0.9`); o restante não pode ser completado mesmo depois
+  de identificado.
 
-Compared with Scenario A on the same data, the **access rate** stays the same
-(records get through either way) while the **utilization** and **inconsistency
-correction** rates rise, quantifying exactly what the national database adds.
+Comparado ao Cenário A sobre os mesmos dados, a **taxa de acesso** permanece igual
+(os registros chegam de qualquer jeito), enquanto as taxas de **utilização** e
+**correção de inconsistências** sobem, quantificando exatamente o que a base
+nacional acrescenta.
 
-### Tuning the parameters
+### Comparando A × B num comando
 
-The tunable parameters live in the [`.env`](.env) file, which Compose reads
-automatically. Edit a value there and re-run `docker compose up`:
+As execuções em Docker acima rodam um cenário por vez. O `main.py` roda **os
+dois, cada um como uma execução real de container**, sobre os mesmos dados e
+imprime as cinco métricas lado a lado com o delta B − A — o objetivo central da
+proposta:
 
 ```bash
-POSTS=5             # number of health posts (also settable with --scale)
-CONSULTATIONS=200   # consultations each post generates
-BASE_SEED=42        # base random seed (shifts the whole population)
-IDLE_TIMEOUT=5      # seconds of silence before the report is finalized
+python main.py
 ```
 
-You can also override any of them for a single run, without editing the file:
+Ele orquestra o Docker: sobe o Cenário A, espera o banco finalizar, depois o
+Cenário B, e lê os dois relatórios que ambas as execuções salvaram em `./reports`
+(nada é simulado no host). Ele grava `report-comparison.json` / `.csv` e respeita
+as mesmas variáveis `POSTS`, `CONSULTATIONS`, `BASE_SEED` e `COVERAGE`. Como cada
+posto reivindica um **índice reprodutível** do banco (seed = `BASE_SEED +
+index*1000`), as duas execuções geram registros idênticos, então `access_rate` e
+`integrated_volume` batem e toda diferença é atribuível só à base nacional.
+
+> Já rodou A e B por conta própria? `RUN_SCENARIOS=0 python main.py` pula as
+> execuções de container e apenas reagrega os relatórios já em `./reports`.
+
+### Ajustando os parâmetros
+
+Os parâmetros ajustáveis ficam no arquivo [`.env`](.env), que o Compose lê
+automaticamente. Edite um valor lá e rode `docker compose up` de novo:
+
+```bash
+POSTS=5             # número de postos de saúde (também ajustável com --scale)
+CONSULTATIONS=200   # consultas que cada posto gera
+BASE_SEED=42        # seed aleatório base (desloca toda a população)
+IDLE_TIMEOUT=5      # segundos de silêncio antes de finalizar o relatório
+```
+
+Você também pode sobrescrever qualquer um deles para uma única execução, sem
+editar o arquivo:
 
 ```powershell
 # PowerShell
@@ -287,40 +382,43 @@ $env:BASE_SEED=7; $env:CONSULTATIONS=500; docker compose up
 BASE_SEED=7 CONSULTATIONS=500 docker compose up
 ```
 
-| Variable        | Default | Description                                            |
+| Variável        | Padrão  | Descrição                                              |
 | --------------- | ------- | ------------------------------------------------------ |
-| `POSTS`         | 5       | Number of health posts (also settable with `--scale`)  |
-| `CONSULTATIONS` | 200     | Consultations generated per post                       |
-| `BASE_SEED`     | 42      | Shifts the whole population of posts                    |
-| `IDLE_TIMEOUT`  | 5       | Seconds of silence before the report is finalized      |
-| `SCENARIO`      | A       | `A` (isolated) or `B` (consult the national database)   |
-| `COVERAGE`      | 0.9     | Scenario B: share of identifiable patients on file      |
-| `REPORT_DIR`    | reports | Where the report is also saved as JSON + CSV            |
-| `POST_INDEX`    | —       | Set per post for an exactly reproducible per-post seed  |
+| `POSTS`         | 5       | Número de postos de saúde (também ajustável com `--scale`) |
+| `CONSULTATIONS` | 200     | Consultas geradas por posto                            |
+| `BASE_SEED`     | 42      | Desloca toda a população de postos                     |
+| `IDLE_TIMEOUT`  | 5       | Segundos de silêncio antes de finalizar o relatório    |
+| `SCENARIO`      | A       | `A` (isolado) ou `B` (consulta a base nacional)         |
+| `COVERAGE`      | 0.9     | Cenário B: fração de pacientes identificáveis cadastrados |
+| `REPORT_DIR`    | reports | Onde o relatório também é salvo em JSON + CSV           |
+| `POST_INDEX`    | —       | Fixa um posto num índice específico em vez de reivindicar |
 
-The database's `GET /report` endpoint is also published on `localhost:8000` if
-you want to poll the metrics while a run is in progress.
+O endpoint `GET /report` do banco também é publicado em `localhost:8000` caso você
+queira consultar as métricas enquanto uma execução está em andamento.
 
-### Saved report (JSON + CSV)
+### Relatório salvo (JSON + CSV)
 
-Besides printing to the log, the central database writes the final report to
-`REPORT_DIR` (mounted to **`./reports`** on the host) when the run ends:
+Além de imprimir no log, o banco central escreve o relatório final em
+`REPORT_DIR` (montado em **`./reports`** no host) quando a execução termina:
 
-- `report-scenario-<a|b>.json` — the complete report (every metric plus the
-  per-field breakdown).
-- `report-scenario-<a|b>.csv` — just the per-field breakdown table, ready for a
-  spreadsheet.
+- `report-scenario-<a|b>.json` — o relatório completo (cada métrica mais a quebra
+  por campo).
+- `report-scenario-<a|b>.csv` — apenas a tabela de quebra por campo, pronta para
+  uma planilha.
 
-The filename carries the scenario, so a Scenario A run and a Scenario B run land
-side by side instead of overwriting each other — which is how you compare them.
+O nome do arquivo carrega o cenário, então uma execução do Cenário A e uma do
+Cenário B ficam lado a lado em vez de sobrescrever uma à outra — que é como você
+as compara.
 
-> **Reproducibility.** With `--scale` (or the `POSTS` replicas), seeds come from
-> the run-varying container ids, so the exact numbers shift between runs while
-> the aggregate picture is stable. For a run that is reproducible down to the
-> per-post seed, give each post a fixed `POST_INDEX` (its seed becomes
-> `BASE_SEED + index*1000`).
+> **Reprodutibilidade.** Cada posto reivindica o próximo índice (`0, 1, 2, …`) do
+> banco ao iniciar e monta o seu seed como `BASE_SEED + index*1000`. A população é,
+> portanto, a união desses seeds — totalmente determinada por `BASE_SEED` e pelo
+> número de postos, não importa qual container reivindicou qual índice — então
+> `--scale health-post=N` é reprodutível entre execuções e uma execução do Cenário
+> A e uma do Cenário B geram exatamente os mesmos registros. Fixe `POST_INDEX` para
+> amarrar um posto específico a um seed específico.
 
-### Example output
+### Exemplo de saída
 
 ```
 === Simulation report: Scenario A - no national general database (Docker) ===
@@ -338,10 +436,10 @@ side by side instead of overwriting each other — which is how you compare them
     city .........  215 missing,    0 recovered
 ```
 
-Re-running the same data under Scenario B, the access rate is unchanged while
-utilization and correction climb — and the breakdown shows exactly where: the
-national base recovers `birth_date`, `sex` and `city`, but **never `cpf`**,
-because without a CPF the patient cannot be identified in the first place.
+Rodando os mesmos dados sob o Cenário B, a taxa de acesso não muda enquanto a
+utilização e a correção sobem — e a quebra mostra exatamente onde: a base nacional
+recupera `birth_date`, `sex` e `city`, mas **nunca `cpf`**, porque sem um CPF o
+paciente não pode ser identificado em primeiro lugar.
 
 ```
 === Simulation report: Scenario B - with national general database (Docker) ===
