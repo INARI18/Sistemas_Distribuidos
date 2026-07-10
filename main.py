@@ -54,7 +54,9 @@ def _container_id(env: dict, profile: str | None, service: str) -> str:
 def _run_scenario(label: str, env: dict, profile: str | None) -> None:
     """Sobe um cenário, aguarda o banco de dados finalizar, depois derruba."""
     print(f"\n=== Running {label} (containers) ===", flush=True)
-    _compose(["up", "-d", "--build"], env, profile)
+    posts = int(env.get("POSTS", "1"))
+    scale_args = ["--scale", f"health-post={posts}"] if posts > 1 else []
+    _compose(["up", "-d", "--build", *scale_args], env, profile)
     try:
         cid = _container_id(env, profile, "sus-database")
         subprocess.run(["docker", "wait", cid], check=True)
@@ -71,9 +73,9 @@ def _load(path: str) -> dict:
 def main() -> None:
     _load_dotenv()   # faz o .env valer também para o main.py, não só para o compose
 
-    posts = int(os.environ.get("POSTS", "5"))
-    consultations = int(os.environ.get("CONSULTATIONS", "200"))
-    base_seed = int(os.environ.get("BASE_SEED", "42"))
+    posts = int(os.environ.get("POSTS", "15"))
+    consultations = int(os.environ.get("CONSULTATIONS", "500"))
+    base_seed = int(os.environ.get("BASE_SEED", "80"))
     coverage = float(os.environ.get("COVERAGE", "0.9"))
     idle_timeout = os.environ.get("IDLE_TIMEOUT", "5")
 
